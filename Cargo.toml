@@ -20,7 +20,7 @@ members = ["derive"]
 default = []
 
 [dependencies]
-bincode = "1.3.3"
+bincode = "2.0.0-rc.3"
 chrono = { version = "0.4.26", features = ["serde"], optional = true }
 derive = { version = "0.7.0", package = "revision-derive", path = "derive" }
 geo = { version = "0.26.0", features = ["use-serde"], optional = true }

@@ -1,23 +1,24 @@
 use super::super::Error;
 use super::super::Revisioned;
-use bincode::Options;
 
 impl<E: Revisioned, T: Revisioned> Revisioned for Result<T, E> {
 	#[inline]
 	fn serialize_revisioned<W: std::io::Write>(&self, writer: &mut W) -> Result<(), Error> {
-		let opts = bincode::options()
+		let cfg = bincode::config::standard()
 			.with_no_limit()
 			.with_little_endian()
-			.with_varint_encoding()
-			.reject_trailing_bytes();
+			.with_variable_int_encoding();
+
 		match self {
 			Ok(v) => {
-				opts.serialize_into(&mut *writer, &0u32)
+				bincode::encode_into_std_write(&0u32, &mut *writer, cfg)
+					.map(|_| ())
 					.map_err(|ref err| Error::Serialize(format!("{:?}", err)))?;
 				v.serialize_revisioned(writer)
 			}
 			Err(e) => {
-				opts.serialize_into(&mut *writer, &1u32)
+				bincode::encode_into_std_write(&1u32, &mut *writer, cfg)
+					.map(|_| ())
 					.map_err(|ref err| Error::Serialize(format!("{:?}", err)))?;
 				e.serialize_revisioned(writer)
 			}
@@ -26,13 +27,12 @@ impl<E: Revisioned, T: Revisioned> Revisioned for Result<T, E> {
 
 	#[inline]
 	fn deserialize_revisioned<R: std::io::Read>(reader: &mut R) -> Result<Self, Error> {
-		let opts = bincode::options()
+		let cfg = bincode::config::standard()
 			.with_no_limit()
 			.with_little_endian()
-			.with_varint_encoding()
-			.reject_trailing_bytes();
-		let variant: u32 = opts
-			.deserialize_from(&mut *reader)
+			.with_variable_int_encoding();
+
+		let variant: u32 = bincode::decode_from_std_read(&mut *reader, cfg)
 			.map_err(|ref err| Error::Deserialize(format!("{:?}", err)))?;
 		match variant {
 			0 => Ok(Ok(T::deserialize_revisioned(reader)

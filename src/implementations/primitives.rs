@@ -1,18 +1,18 @@
 use super::super::Error;
 use super::super::Revisioned;
-use bincode::Options;
 
 macro_rules! impl_revisioned {
 	($ty:ident) => {
 		impl Revisioned for $ty {
 			#[inline]
 			fn serialize_revisioned<W: std::io::Write>(&self, writer: &mut W) -> Result<(), Error> {
-				bincode::options()
+				let cfg = bincode::config::standard()
 					.with_no_limit()
 					.with_little_endian()
-					.with_varint_encoding()
-					.reject_trailing_bytes()
-					.serialize_into(writer, self)
+					.with_variable_int_encoding();
+
+				bincode::encode_into_std_write(self, &mut *writer, cfg)
+					.map(|_| ())
 					.map_err(|ref err| Error::Serialize(format!("{:?}", err)))
 			}
 
@@ -21,12 +21,12 @@ macro_rules! impl_revisioned {
 			where
 				Self: Sized,
 			{
-				bincode::options()
+				let cfg = bincode::config::standard()
 					.with_no_limit()
 					.with_little_endian()
-					.with_varint_encoding()
-					.reject_trailing_bytes()
-					.deserialize_from(reader)
+					.with_variable_int_encoding();
+
+				bincode::decode_from_std_read(&mut *reader, cfg)
 					.map_err(|ref err| Error::Deserialize(format!("{:?}", err)))
 			}
 
